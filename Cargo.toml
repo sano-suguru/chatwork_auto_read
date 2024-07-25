@@ -1,0 +1,29 @@
+[lib]
+name = "chatwork_auto_read"
+path = "src/lib.rs"
+
+[[bin]]
+name = "chatwork_auto_read"
+path = "src/main.rs"
+
+[package]
+name = "chatwork_auto_read"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+reqwest = { version = "0.11", features = ["json"] }
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+config = "0.13"
+dotenv = "0.15"
+log = "0.4"
+env_logger = "0.9"
+anyhow = "1.0"
+thiserror = "1.0"
+async-trait = "0.1.68"
+mockall = "0.13.0"
+
+[dev-dependencies]
+tempfile = "3"
