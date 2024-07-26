@@ -24,7 +24,7 @@ jobs:
         run: |
           mkdir -p ./gh-pages/doc
           cp -r ./target/doc/* ./gh-pages/doc/
-          echo '<meta http-equiv="refresh" content="0; url=doc/your_crate_name/index.html">' > ./gh-pages/index.html
+          echo '<meta http-equiv="refresh" content="0; url=doc/chatwork_auto_read/index.html">' > ./gh-pages/index.html
       - name: Deploy Docs
         uses: peaceiris/actions-gh-pages@v3
         if: github.ref == 'refs/heads/main'
