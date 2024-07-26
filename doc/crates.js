@@ -1,0 +1,1 @@
+window.ALL_CRATES = ["chatwork_auto_read"];
