@@ -1,5 +1,5 @@
 use crate::error::Error;
-use crate::models::{Message, Room};
+use crate::models::{Message, ReadStatus, Room};
 use anyhow::Context;
 use async_trait::async_trait;
 use log::{error, info, warn};
@@ -42,6 +42,9 @@ pub trait ChatworkClientTrait {
 
     /// 指定されたルーム内の特定のメッセージを既読としてマークします。
     ///
+    /// このメソッドは、Chatwork APIを使用して指定されたメッセージを既読状態に更新します。
+    /// レート制限に遭遇した場合、自動的にリトライを行います。
+    ///
     /// # 引数
     ///
     /// * `room_id` - メッセージを含むルームのID。
@@ -49,11 +52,39 @@ pub trait ChatworkClientTrait {
     ///
     /// # 戻り値
     ///
-    /// 成功した場合は`Ok(())`、操作が失敗した場合は`Error`を返します。
-    async fn mark_message_as_read(&self, room_id: i32, message_id: &str) -> Result<(), Error>;
+    /// 操作が成功した場合は`Ok(())`を返します。
+    /// エラーが発生した場合（APIエラー、ネットワークエラーなど）は`Error`を返します。
+    ///
+    /// # エラー
+    ///
+    /// 以下の場合にエラーを返す可能性があります：
+    /// - APIがエラーレスポンスを返した場合
+    /// - ネットワーク接続に問題がある場合
+    /// - 最大リトライ回数を超えた場合
+    ///
+    /// # 例
+    ///
+    /// ```
+    /// # use your_crate::ChatworkClient;
+    /// # use your_crate::ChatworkClientTrait;
+    /// # async fn example(client: &impl ChatworkClientTrait) -> Result<(), Box<dyn std::error::Error>> {
+    /// let room_id = 123;
+    /// let message_id = "456";
+    /// client.mark_message_as_read(room_id, message_id).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    async fn mark_message_as_read(
+        &self,
+        room_id: i32,
+        message_id: &str,
+    ) -> Result<ReadStatus, Error>;
 }
 
-/// Chatwork APIと対話するためのChatworkClientTraitを実装します。
+/// Chatwork APIとの対話を管理するクライアント。
+///
+/// このクライアントは、Chatwork APIへのリクエストの送信、レスポンスの処理、
+/// およびレート制限の処理を担当します。
 pub struct ChatworkClient {
     client: Client,
     api_token: String,
@@ -75,7 +106,13 @@ impl ChatworkClient {
     /// リトライロジックを使用してAPI操作を実行します。
     ///
     /// このメソッドは、レート制限が発生した場合、指数関数的バックオフを用いて
-    /// 最大MAX_RETRY_ATTEMPTS回まで操作を再試行します。
+    /// 最大`MAX_RETRY_ATTEMPTS`回まで操作を再試行します。
+    ///
+    /// # 型パラメータ
+    ///
+    /// * `T` - デシリアライズされたレスポンスの型。
+    /// * `F` - APIリクエストを実行するクロージャの型。
+    /// * `Fut` - クロージャが返す`Future`の型。
     ///
     /// # 引数
     ///
@@ -83,7 +120,15 @@ impl ChatworkClient {
     ///
     /// # 戻り値
     ///
-    /// 成功した場合はデシリアライズされたレスポンスを含む`Result`、全てのリトライが失敗した場合は`Error`を返します。
+    /// 成功した場合はデシリアライズされたレスポンスを含む`Result`、
+    /// 全てのリトライが失敗した場合は`Error`を返します。
+    ///
+    /// # エラー
+    ///
+    /// 以下の場合にエラーを返します：
+    /// - 全てのリトライ試行が失敗した場合
+    /// - APIがエラーレスポンスを返した場合
+    /// - レスポンスのデシリアライズに失敗した場合
     async fn execute_with_retry<T, F, Fut>(&self, operation: F) -> Result<T, Error>
     where
         F: Fn() -> Fut + Send + Sync,
@@ -125,9 +170,19 @@ impl ChatworkClient {
 
     /// APIレスポンスからレート制限ヘッダーをログに記録します。
     ///
+    /// このメソッドは、Chatwork APIのレート制限に関する情報を抽出し、
+    /// 警告レベルでログに記録します。
+    ///
     /// # 引数
     ///
     /// * `headers` - レート制限情報を含むレスポンスヘッダー。
+    ///
+    /// # ログ出力
+    ///
+    /// 以下のヘッダーの値をログに記録します：
+    /// - `x-ratelimit-limit`: APIリクエストの制限数
+    /// - `x-ratelimit-remaining`: 残りのリクエスト数
+    /// - `x-ratelimit-reset`: レート制限がリセットされる時間（UNIX時間）
     async fn log_rate_limit_headers(&self, headers: &reqwest::header::HeaderMap) {
         let limit = headers
             .get("x-ratelimit-limit")
@@ -147,6 +202,9 @@ impl ChatworkClient {
 
     /// APIからのエラーレスポンスを処理します。
     ///
+    /// このメソッドは、APIからのエラーレスポンスを解析し、
+    /// 詳細な情報をログに記録し、適切なエラー型を生成します。
+    ///
     /// # 引数
     ///
     /// * `response` - APIからのエラーレスポンス。
@@ -155,6 +213,11 @@ impl ChatworkClient {
     /// # 戻り値
     ///
     /// APIエラーの詳細を含む`Error`オブジェクトを返します。
+    ///
+    /// # エラー
+    ///
+    /// レスポンスボディの読み取りに失敗した場合、
+    /// `Error::Context`でラップされたエラーを返します。
     async fn handle_error_response(
         &self,
         response: reqwest::Response,
@@ -209,7 +272,11 @@ impl ChatworkClientTrait for ChatworkClient {
         .await
     }
 
-    async fn mark_message_as_read(&self, room_id: i32, message_id: &str) -> Result<(), Error> {
+    async fn mark_message_as_read(
+        &self,
+        room_id: i32,
+        message_id: &str,
+    ) -> Result<ReadStatus, Error> {
         info!(
             "メッセージを既読としてマークします。ルーム: {}, メッセージ: {}",
             room_id, message_id
@@ -220,20 +287,25 @@ impl ChatworkClientTrait for ChatworkClient {
             room_id
         );
 
-        self.execute_with_retry(|| async {
-            self.client
-                .put(&url)
-                .header("X-ChatWorkToken", &self.api_token)
-                .form(&[("message_id", message_id)])
-                .send()
-                .await
-        })
-        .await?;
+        let status: ReadStatus = self
+            .execute_with_retry(|| async {
+                self.client
+                    .put(&url)
+                    .header("X-ChatWorkToken", &self.api_token)
+                    .form(&[("message_id", message_id)])
+                    .send()
+                    .await
+            })
+            .await?;
 
-        Ok(())
+        Ok(status)
     }
 }
 
+/// `ChatworkClient`と`ChatworkClientTrait`の単体テスト。
+///
+/// これらのテストは`MockChatworkClientTrait`を使用して、
+/// 各メソッドの期待される動作を検証します。
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -286,10 +358,19 @@ mod tests {
             .expect_mark_message_as_read()
             .with(eq(123), eq("456"))
             .times(1)
-            .returning(|_, _| Ok(()));
+            .returning(|_, _| {
+                Ok(ReadStatus {
+                    unread_num: 0,
+                    mention_num: 0,
+                })
+            });
 
         let result = mock_client.mark_message_as_read(123, "456").await;
         assert!(result.is_ok());
+        if let Ok(status) = result {
+            assert_eq!(status.unread_num, 0);
+            assert_eq!(status.mention_num, 0);
+        }
     }
 
     #[tokio::test]

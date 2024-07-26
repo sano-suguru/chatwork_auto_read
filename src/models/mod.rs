@@ -11,6 +11,8 @@ mod message;
 /// ルーム関連の構造体と機能を含むモジュール
 mod room;
 
+mod read_status;
+
 /// Chatworkのメッセージを表す構造体
 ///
 /// この構造体は、個々のChatworkメッセージのデータを
@@ -22,3 +24,5 @@ pub use message::Message;
 /// この構造体は、Chatworkのルーム（チャットルーム）の
 /// 情報を保持し、APIレスポンスのデシリアライズに使用されます。
 pub use room::Room;
+
+pub use read_status::ReadStatus;

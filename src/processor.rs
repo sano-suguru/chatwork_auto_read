@@ -154,7 +154,7 @@ impl<T: ChatworkClientTrait> MessageProcessor<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{client::MockChatworkClientTrait, settings::ChatworkSettings};
+    use crate::{client::MockChatworkClientTrait, models::ReadStatus, settings::ChatworkSettings};
     use mockall::predicate::*;
     use std::collections::HashSet;
 
@@ -173,6 +173,7 @@ mod tests {
         let mut mock_client = MockChatworkClientTrait::new();
         let settings = create_test_settings();
 
+        // fetch_rooms の期待値設定
         mock_client.expect_fetch_rooms().times(1).returning(|| {
             Ok(vec![
                 Room {
@@ -193,6 +194,7 @@ mod tests {
             ])
         });
 
+        // fetch_messages の期待値設定
         mock_client
             .expect_fetch_messages()
             .with(eq(1))
@@ -210,15 +212,30 @@ mod tests {
                 ])
             });
 
+        // mark_message_as_read の期待値設定
         mock_client
             .expect_mark_message_as_read()
             .with(eq(1), eq("1"))
             .times(1)
-            .returning(|_, _| Ok(()));
+            .returning(|_, _| {
+                Ok(ReadStatus {
+                    unread_num: 0,
+                    mention_num: 0,
+                })
+            });
 
         let processor = MessageProcessor::new(mock_client, settings);
         let result = processor.process_all_rooms().await;
-        assert!(result.is_ok());
+
+        // 結果の検証
+        assert!(
+            result.is_ok(),
+            "process_all_rooms should complete without errors"
+        );
+
+        // Mockの検証
+        // ここでMockallが自動的にすべての期待値が満たされたかチェックします
+        // 期待値が満たされていない場合、テストは失敗します
     }
 
     #[tokio::test]
