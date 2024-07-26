@@ -22,7 +22,7 @@ log = "0.4"
 env_logger = "0.9"
 anyhow = "1.0"
 thiserror = "1.0"
-async-trait = "0.1.68"
+async-trait = "0.1.81"
 mockall = "0.13.0"
 
 [dev-dependencies]
