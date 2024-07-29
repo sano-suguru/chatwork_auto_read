@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use crate::client::ChatworkClientTrait;
 use crate::error::Error;
 use crate::models::{Message, Room};
@@ -60,7 +62,12 @@ impl<T: ChatworkClientTrait> MessageProcessor<T> {
     ///
     /// ルームをスキップすべき場合は`true`、そうでない場合は`false`を返します。
     fn should_skip_room(&self, room: &Room) -> bool {
-        if self.settings.chatwork.skip_room_ids.contains(&room.room_id) {
+        if self
+            .settings
+            .chatwork
+            .exclude_room_ids
+            .contains(&room.room_id)
+        {
             info!(
                 "ルーム{}をスキップします: スキップリストに含まれています",
                 room.room_id
@@ -105,38 +112,41 @@ impl<T: ChatworkClientTrait> MessageProcessor<T> {
         Ok(())
     }
 
-    /// メッセージリストから対象のメッセージを見つけます。
+    /// メッセージのリストから対象のメッセージを見つけます。
+    ///
+    /// この関数は、与えられたメッセージのリストを逆順に走査し、
+    /// 除外すべきメッセージの直後のメッセージを返します。
+    /// 除外すべきメッセージが見つからない場合、最初のメッセージを返します。
     ///
     /// # 引数
     ///
-    /// * `messages` - 検索対象のメッセージリスト
+    /// * `messages` - 検索対象のメッセージのスライス
     ///
     /// # 戻り値
     ///
-    /// 対象のメッセージが見つかった場合はそのメッセージへの参照を、
-    /// 見つからなかった場合は`None`を返します。
+    /// * `Option<&Message>` - 見つかった対象のメッセージへの参照。見つからなかった場合は `None`
+    ///
+    /// # 例
+    ///
+    /// ```
+    /// let processor = MessageProcessor::new();
+    /// let messages = vec![/* メッセージのリスト */];
+    /// let target_message = processor.find_target_message(&messages);
+    /// ```
     fn find_target_message<'a>(&self, messages: &'a [Message]) -> Option<&'a Message> {
         info!(
             "{}個のメッセージから対象のメッセージを検索中",
             messages.len()
         );
-        let target_mentions: Vec<String> = self
-            .settings
-            .chatwork
-            .skip_account_ids
-            .iter()
-            .map(|id| format!("[To:{}]", id))
-            .collect();
+
+        let exclude_account_ids: HashSet<&String> =
+            self.settings.chatwork.exclude_account_ids.iter().collect();
 
         let target_index = messages
             .iter()
-            .position(|message| {
-                target_mentions
-                    .iter()
-                    .any(|mention| message.body.contains(mention))
-            })
-            .map(|index| index.saturating_sub(1))
-            .unwrap_or_else(|| messages.len().saturating_sub(1));
+            .rposition(|message| self.is_message_to_be_excluded(message, &exclude_account_ids))
+            .map(|index| index.saturating_add(1))
+            .unwrap_or(0);
 
         let result = messages.get(target_index);
         if let Some(message) = result {
@@ -148,6 +158,43 @@ impl<T: ChatworkClientTrait> MessageProcessor<T> {
             warn!("対象のメッセージが見つかりませんでした");
         }
         result
+    }
+
+    /// 指定されたメッセージが除外対象かどうかを判断します。
+    ///
+    /// このメソッドは、メッセージが全体メンション（"toall"）を含むか、
+    /// または特定のアカウントへのメンションを含むかをチェックします。
+    ///
+    /// # 引数
+    ///
+    /// * `message` - チェック対象のメッセージ
+    /// * `exclude_account_ids` - 除外すべきアカウントIDのセット
+    ///
+    /// # 戻り値
+    ///
+    /// * `bool` - メッセージが除外対象の場合は `true`、そうでない場合は `false`
+    ///
+    /// # 例
+    ///
+    /// ```
+    /// let exclude_ids = HashSet::from(["123", "456"]);
+    /// let message = Message { body: "[To:123] Hello".to_string(), .. };
+    /// let is_excluded = processor.is_message_to_be_excluded(&message, &exclude_ids);
+    /// assert!(is_excluded);
+    /// ```
+    fn is_message_to_be_excluded(
+        &self,
+        message: &Message,
+        exclude_account_ids: &HashSet<&String>,
+    ) -> bool {
+        if message.body.contains("[toall]") {
+            return true;
+        }
+
+        exclude_account_ids.iter().any(|&id| {
+            let mention = format!("[To:{}]", id);
+            message.body.contains(&mention)
+        })
     }
 }
 
@@ -162,8 +209,8 @@ mod tests {
         Settings {
             chatwork: ChatworkSettings {
                 api_token: "test_token".to_string(),
-                skip_account_ids: vec!["123".to_string()],
-                skip_room_ids: HashSet::from([999]),
+                exclude_account_ids: vec!["123".to_string()],
+                exclude_room_ids: HashSet::from([999]),
             },
         }
     }

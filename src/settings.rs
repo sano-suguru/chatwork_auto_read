@@ -9,10 +9,10 @@ pub struct ChatworkSettings {
     /// Chatwork APIのトークン
     pub api_token: String,
     /// 対象となるアカウントIDのリスト
-    pub skip_account_ids: Vec<String>,
+    pub exclude_account_ids: Vec<String>,
     /// スキップするルームIDのセット（デフォルトは空）
     #[serde(default)]
-    pub skip_room_ids: HashSet<i32>,
+    pub exclude_room_ids: HashSet<i32>,
 }
 
 /// アプリケーション全体の設定を保持する構造体です。
@@ -78,7 +78,7 @@ mod tests {
             r#"
             [chatwork]
             api_token = "default_token"
-            skip_account_ids = ["123", "456"]
+            exclude_account_ids = ["123", "456"]
         "#,
         );
 
@@ -89,7 +89,7 @@ mod tests {
             r#"
             [chatwork]
             api_token = "dev_token"
-            skip_room_ids = [1, 2, 3]
+            exclude_room_ids = [1, 2, 3]
         "#,
         );
 
@@ -99,8 +99,8 @@ mod tests {
         let settings = Settings::new_with_mode("development").expect("設定の作成に失敗しました");
 
         assert_eq!(settings.chatwork.api_token, "dev_token");
-        assert_eq!(settings.chatwork.skip_account_ids, vec!["123", "456"]);
-        assert_eq!(settings.chatwork.skip_room_ids, HashSet::from([1, 2, 3]));
+        assert_eq!(settings.chatwork.exclude_account_ids, vec!["123", "456"]);
+        assert_eq!(settings.chatwork.exclude_room_ids, HashSet::from([1, 2, 3]));
     }
 
     #[test]
@@ -114,7 +114,7 @@ mod tests {
             r#"
             [chatwork]
             api_token = "default_token"
-            skip_account_ids = ["123", "456"]
+            exclude_account_ids = ["123", "456"]
         "#,
         );
 
@@ -134,8 +134,8 @@ mod tests {
         let settings = Settings::new_with_mode("production").expect("設定の作成に失敗しました");
 
         assert_eq!(settings.chatwork.api_token, "prod_token");
-        assert_eq!(settings.chatwork.skip_account_ids, vec!["123", "456"]);
-        assert!(settings.chatwork.skip_room_ids.is_empty());
+        assert_eq!(settings.chatwork.exclude_account_ids, vec!["123", "456"]);
+        assert!(settings.chatwork.exclude_room_ids.is_empty());
     }
 
     #[test]
@@ -149,7 +149,7 @@ mod tests {
             r#"
             [chatwork]
             api_token = "default_token"
-            skip_account_ids = ["123", "456"]
+            exclude_account_ids = ["123", "456"]
         "#,
         );
 
@@ -162,8 +162,8 @@ mod tests {
         let settings = Settings::new_with_mode("development").expect("設定の作成に失敗しました");
 
         assert_eq!(settings.chatwork.api_token, "env_token");
-        assert_eq!(settings.chatwork.skip_account_ids, vec!["123", "456"]);
-        assert!(settings.chatwork.skip_room_ids.is_empty());
+        assert_eq!(settings.chatwork.exclude_account_ids, vec!["123", "456"]);
+        assert!(settings.chatwork.exclude_room_ids.is_empty());
 
         // クリーンアップ
         env::remove_var("APP_CHATWORK_API_TOKEN");
