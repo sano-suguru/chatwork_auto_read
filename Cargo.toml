@@ -1,3 +1,12 @@
+[package]
+name = "chatwork_auto_read"
+version = "0.8.0"
+edition = "2021"
+authors = ["Sano Suguru"]
+license = "MIT"
+description = "Chatwork のメッセージを自動で既読するツールです。"
+repository = "https://github.com/yourusername/chatwork_auto_read"
+
 [lib]
 name = "chatwork_auto_read"
 path = "src/lib.rs"
@@ -5,11 +14,6 @@ path = "src/lib.rs"
 [[bin]]
 name = "chatwork_auto_read"
 path = "src/main.rs"
-
-[package]
-name = "chatwork_auto_read"
-version = "0.1.0"
-edition = "2021"
 
 [dependencies]
 reqwest = { version = "0.11", features = ["json"] }
