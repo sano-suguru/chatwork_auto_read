@@ -44,6 +44,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.create_release.outputs.upload_url }}
-          asset_path: ./target/release/chatwork_auto_read
-          asset_name: chatwork_auto_read-${{ runner.os }}
+          asset_path: ${{ runner.os == 'Windows' && './target/release/chatwork_auto_read.exe' || './target/release/chatwork_auto_read' }}
+          asset_name: chatwork_auto_read-${{ runner.os }}${{ runner.os == 'Windows' && '.exe' || '' }}
           asset_content_type: application/octet-stream
