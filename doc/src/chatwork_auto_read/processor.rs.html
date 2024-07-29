@@ -325,7 +325,56 @@
 <a href="#325" id="325">325</a>
 <a href="#326" id="326">326</a>
 <a href="#327" id="327">327</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::client::ChatworkClientTrait;
+<a href="#328" id="328">328</a>
+<a href="#329" id="329">329</a>
+<a href="#330" id="330">330</a>
+<a href="#331" id="331">331</a>
+<a href="#332" id="332">332</a>
+<a href="#333" id="333">333</a>
+<a href="#334" id="334">334</a>
+<a href="#335" id="335">335</a>
+<a href="#336" id="336">336</a>
+<a href="#337" id="337">337</a>
+<a href="#338" id="338">338</a>
+<a href="#339" id="339">339</a>
+<a href="#340" id="340">340</a>
+<a href="#341" id="341">341</a>
+<a href="#342" id="342">342</a>
+<a href="#343" id="343">343</a>
+<a href="#344" id="344">344</a>
+<a href="#345" id="345">345</a>
+<a href="#346" id="346">346</a>
+<a href="#347" id="347">347</a>
+<a href="#348" id="348">348</a>
+<a href="#349" id="349">349</a>
+<a href="#350" id="350">350</a>
+<a href="#351" id="351">351</a>
+<a href="#352" id="352">352</a>
+<a href="#353" id="353">353</a>
+<a href="#354" id="354">354</a>
+<a href="#355" id="355">355</a>
+<a href="#356" id="356">356</a>
+<a href="#357" id="357">357</a>
+<a href="#358" id="358">358</a>
+<a href="#359" id="359">359</a>
+<a href="#360" id="360">360</a>
+<a href="#361" id="361">361</a>
+<a href="#362" id="362">362</a>
+<a href="#363" id="363">363</a>
+<a href="#364" id="364">364</a>
+<a href="#365" id="365">365</a>
+<a href="#366" id="366">366</a>
+<a href="#367" id="367">367</a>
+<a href="#368" id="368">368</a>
+<a href="#369" id="369">369</a>
+<a href="#370" id="370">370</a>
+<a href="#371" id="371">371</a>
+<a href="#372" id="372">372</a>
+<a href="#373" id="373">373</a>
+<a href="#374" id="374">374</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::HashSet;
+
+<span class="kw">use </span><span class="kw">crate</span>::client::ChatworkClientTrait;
 <span class="kw">use </span><span class="kw">crate</span>::error::Error;
 <span class="kw">use </span><span class="kw">crate</span>::models::{Message, Room};
 <span class="kw">use </span><span class="kw">crate</span>::settings::Settings;
@@ -387,7 +436,12 @@
     ///
     /// ルームをスキップすべき場合は`true`、そうでない場合は`false`を返します。
     </span><span class="kw">fn </span>should_skip_room(<span class="kw-2">&amp;</span><span class="self">self</span>, room: <span class="kw-2">&amp;</span>Room) -&gt; bool {
-        <span class="kw">if </span><span class="self">self</span>.settings.chatwork.skip_room_ids.contains(<span class="kw-2">&amp;</span>room.room_id) {
+        <span class="kw">if </span><span class="self">self
+            </span>.settings
+            .chatwork
+            .exclude_room_ids
+            .contains(<span class="kw-2">&amp;</span>room.room_id)
+        {
             <span class="macro">info!</span>(
                 <span class="string">"ルーム{}をスキップします: スキップリストに含まれています"</span>,
                 room.room_id
@@ -432,38 +486,41 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// メッセージリストから対象のメッセージを見つけます。
+    <span class="doccomment">/// メッセージのリストから対象のメッセージを見つけます。
+    ///
+    /// この関数は、与えられたメッセージのリストを逆順に走査し、
+    /// 除外すべきメッセージの直後のメッセージを返します。
+    /// 除外すべきメッセージが見つからない場合、最初のメッセージを返します。
     ///
     /// # 引数
     ///
-    /// * `messages` - 検索対象のメッセージリスト
+    /// * `messages` - 検索対象のメッセージのスライス
     ///
     /// # 戻り値
     ///
-    /// 対象のメッセージが見つかった場合はそのメッセージへの参照を、
-    /// 見つからなかった場合は`None`を返します。
+    /// * `Option&lt;&amp;Message&gt;` - 見つかった対象のメッセージへの参照。見つからなかった場合は `None`
+    ///
+    /// # 例
+    ///
+    /// ```
+    /// let processor = MessageProcessor::new();
+    /// let messages = vec![/* メッセージのリスト */];
+    /// let target_message = processor.find_target_message(&amp;messages);
+    /// ```
     </span><span class="kw">fn </span>find_target_message&lt;<span class="lifetime">'a</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, messages: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[Message]) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>Message&gt; {
         <span class="macro">info!</span>(
             <span class="string">"{}個のメッセージから対象のメッセージを検索中"</span>,
             messages.len()
         );
-        <span class="kw">let </span>target_mentions: Vec&lt;String&gt; = <span class="self">self
-            </span>.settings
-            .chatwork
-            .skip_account_ids
-            .iter()
-            .map(|id| <span class="macro">format!</span>(<span class="string">"[To:{}]"</span>, id))
-            .collect();
+
+        <span class="kw">let </span>exclude_account_ids: HashSet&lt;<span class="kw-2">&amp;</span>String&gt; =
+            <span class="self">self</span>.settings.chatwork.exclude_account_ids.iter().collect();
 
         <span class="kw">let </span>target_index = messages
             .iter()
-            .position(|message| {
-                target_mentions
-                    .iter()
-                    .any(|mention| message.body.contains(mention))
-            })
-            .map(|index| index.saturating_sub(<span class="number">1</span>))
-            .unwrap_or_else(|| messages.len().saturating_sub(<span class="number">1</span>));
+            .rposition(|message| <span class="self">self</span>.is_message_to_be_excluded(message, <span class="kw-2">&amp;</span>exclude_account_ids))
+            .map(|index| index.saturating_add(<span class="number">1</span>))
+            .unwrap_or(<span class="number">0</span>);
 
         <span class="kw">let </span>result = messages.get(target_index);
         <span class="kw">if let </span><span class="prelude-val">Some</span>(message) = result {
@@ -475,6 +532,43 @@
             <span class="macro">warn!</span>(<span class="string">"対象のメッセージが見つかりませんでした"</span>);
         }
         result
+    }
+
+    <span class="doccomment">/// 指定されたメッセージが除外対象かどうかを判断します。
+    ///
+    /// このメソッドは、メッセージが全体メンション（"toall"）を含むか、
+    /// または特定のアカウントへのメンションを含むかをチェックします。
+    ///
+    /// # 引数
+    ///
+    /// * `message` - チェック対象のメッセージ
+    /// * `exclude_account_ids` - 除外すべきアカウントIDのセット
+    ///
+    /// # 戻り値
+    ///
+    /// * `bool` - メッセージが除外対象の場合は `true`、そうでない場合は `false`
+    ///
+    /// # 例
+    ///
+    /// ```
+    /// let exclude_ids = HashSet::from(["123", "456"]);
+    /// let message = Message { body: "[To:123] Hello".to_string(), .. };
+    /// let is_excluded = processor.is_message_to_be_excluded(&amp;message, &amp;exclude_ids);
+    /// assert!(is_excluded);
+    /// ```
+    </span><span class="kw">fn </span>is_message_to_be_excluded(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        message: <span class="kw-2">&amp;</span>Message,
+        exclude_account_ids: <span class="kw-2">&amp;</span>HashSet&lt;<span class="kw-2">&amp;</span>String&gt;,
+    ) -&gt; bool {
+        <span class="kw">if </span>message.body.contains(<span class="string">"[toall]"</span>) {
+            <span class="kw">return </span><span class="bool-val">true</span>;
+        }
+
+        exclude_account_ids.iter().any(|<span class="kw-2">&amp;</span>id| {
+            <span class="kw">let </span>mention = <span class="macro">format!</span>(<span class="string">"[To:{}]"</span>, id);
+            message.body.contains(<span class="kw-2">&amp;</span>mention)
+        })
     }
 }
 
@@ -489,8 +583,8 @@
         Settings {
             chatwork: ChatworkSettings {
                 api_token: <span class="string">"test_token"</span>.to_string(),
-                skip_account_ids: <span class="macro">vec!</span>[<span class="string">"123"</span>.to_string()],
-                skip_room_ids: HashSet::from([<span class="number">999</span>]),
+                exclude_account_ids: <span class="macro">vec!</span>[<span class="string">"123"</span>.to_string()],
+                exclude_room_ids: HashSet::from([<span class="number">999</span>]),
             },
         }
     }

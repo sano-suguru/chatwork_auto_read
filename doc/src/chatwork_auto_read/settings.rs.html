@@ -180,10 +180,10 @@
     <span class="doccomment">/// Chatwork APIのトークン
     </span><span class="kw">pub </span>api_token: String,
     <span class="doccomment">/// 対象となるアカウントIDのリスト
-    </span><span class="kw">pub </span>skip_account_ids: Vec&lt;String&gt;,
+    </span><span class="kw">pub </span>exclude_account_ids: Vec&lt;String&gt;,
     <span class="doccomment">/// スキップするルームIDのセット（デフォルトは空）
     </span><span class="attr">#[serde(default)]
-    </span><span class="kw">pub </span>skip_room_ids: HashSet&lt;i32&gt;,
+    </span><span class="kw">pub </span>exclude_room_ids: HashSet&lt;i32&gt;,
 }
 
 <span class="doccomment">/// アプリケーション全体の設定を保持する構造体です。
@@ -249,7 +249,7 @@
             <span class="string">r#"
             [chatwork]
             api_token = "default_token"
-            skip_account_ids = ["123", "456"]
+            exclude_account_ids = ["123", "456"]
         "#</span>,
         );
 
@@ -260,7 +260,7 @@
             <span class="string">r#"
             [chatwork]
             api_token = "dev_token"
-            skip_room_ids = [1, 2, 3]
+            exclude_room_ids = [1, 2, 3]
         "#</span>,
         );
 
@@ -270,8 +270,8 @@
         <span class="kw">let </span>settings = Settings::new_with_mode(<span class="string">"development"</span>).expect(<span class="string">"設定の作成に失敗しました"</span>);
 
         <span class="macro">assert_eq!</span>(settings.chatwork.api_token, <span class="string">"dev_token"</span>);
-        <span class="macro">assert_eq!</span>(settings.chatwork.skip_account_ids, <span class="macro">vec!</span>[<span class="string">"123"</span>, <span class="string">"456"</span>]);
-        <span class="macro">assert_eq!</span>(settings.chatwork.skip_room_ids, HashSet::from([<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]));
+        <span class="macro">assert_eq!</span>(settings.chatwork.exclude_account_ids, <span class="macro">vec!</span>[<span class="string">"123"</span>, <span class="string">"456"</span>]);
+        <span class="macro">assert_eq!</span>(settings.chatwork.exclude_room_ids, HashSet::from([<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]));
     }
 
     <span class="attr">#[test]
@@ -285,7 +285,7 @@
             <span class="string">r#"
             [chatwork]
             api_token = "default_token"
-            skip_account_ids = ["123", "456"]
+            exclude_account_ids = ["123", "456"]
         "#</span>,
         );
 
@@ -305,8 +305,8 @@
         <span class="kw">let </span>settings = Settings::new_with_mode(<span class="string">"production"</span>).expect(<span class="string">"設定の作成に失敗しました"</span>);
 
         <span class="macro">assert_eq!</span>(settings.chatwork.api_token, <span class="string">"prod_token"</span>);
-        <span class="macro">assert_eq!</span>(settings.chatwork.skip_account_ids, <span class="macro">vec!</span>[<span class="string">"123"</span>, <span class="string">"456"</span>]);
-        <span class="macro">assert!</span>(settings.chatwork.skip_room_ids.is_empty());
+        <span class="macro">assert_eq!</span>(settings.chatwork.exclude_account_ids, <span class="macro">vec!</span>[<span class="string">"123"</span>, <span class="string">"456"</span>]);
+        <span class="macro">assert!</span>(settings.chatwork.exclude_room_ids.is_empty());
     }
 
     <span class="attr">#[test]
@@ -320,7 +320,7 @@
             <span class="string">r#"
             [chatwork]
             api_token = "default_token"
-            skip_account_ids = ["123", "456"]
+            exclude_account_ids = ["123", "456"]
         "#</span>,
         );
 
@@ -333,8 +333,8 @@
         <span class="kw">let </span>settings = Settings::new_with_mode(<span class="string">"development"</span>).expect(<span class="string">"設定の作成に失敗しました"</span>);
 
         <span class="macro">assert_eq!</span>(settings.chatwork.api_token, <span class="string">"env_token"</span>);
-        <span class="macro">assert_eq!</span>(settings.chatwork.skip_account_ids, <span class="macro">vec!</span>[<span class="string">"123"</span>, <span class="string">"456"</span>]);
-        <span class="macro">assert!</span>(settings.chatwork.skip_room_ids.is_empty());
+        <span class="macro">assert_eq!</span>(settings.chatwork.exclude_account_ids, <span class="macro">vec!</span>[<span class="string">"123"</span>, <span class="string">"456"</span>]);
+        <span class="macro">assert!</span>(settings.chatwork.exclude_room_ids.is_empty());
 
         <span class="comment">// クリーンアップ
         </span>env::remove_var(<span class="string">"APP_CHATWORK_API_TOKEN"</span>);
